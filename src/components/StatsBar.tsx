@@ -38,7 +38,7 @@ export const StatsBar = ({ businesses, onExport }: StatsBarProps) => {
           value={totalReviews.toLocaleString()}
         />
         <Stat
-          icon={<Building2 size={14} className="text-purple-400" />}
+          icon={<Building2 size={14} className="text-accent" />}
           label="Categories"
           value={categories.toString()}
         />
