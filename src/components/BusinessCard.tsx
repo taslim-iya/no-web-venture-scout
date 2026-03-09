@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Phone, MapPin, Star, Copy, Check, Globe, Calendar, Users } from "lucide-react";
+import { Phone, MapPin, Star, Copy, Check, Globe, Calendar, Users, Mail, Loader2 } from "lucide-react";
 import { Business } from "@/data/mockBusinesses";
+import { findEmailForBusiness } from "@/lib/hunterApi";
 
 type BusinessCardProps = {
   business: Business;
@@ -9,11 +10,25 @@ type BusinessCardProps = {
 
 export const BusinessCard = ({ business, index }: BusinessCardProps) => {
   const [copied, setCopied] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(business.email ?? null);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailSearched, setEmailSearched] = useState(!!business.email);
+  const [emailConfidence, setEmailConfidence] = useState<number | null>(null);
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setCopied(field);
     setTimeout(() => setCopied(null), 1500);
+  };
+
+  const handleFindEmail = async () => {
+    if (emailLoading || emailSearched) return;
+    setEmailLoading(true);
+    const result = await findEmailForBusiness(business.name, business.city, business.state);
+    setEmail(result.email);
+    setEmailConfidence(result.confidence ?? null);
+    setEmailSearched(true);
+    setEmailLoading(false);
   };
 
   const staggerClass = index < 6 ? `stagger-${Math.min(index + 1, 6)}` : "";
@@ -95,20 +110,69 @@ export const BusinessCard = ({ business, index }: BusinessCardProps) => {
           <div className="flex items-center gap-2.5">
             <Phone size={13} className="text-muted-foreground shrink-0" />
             <span className="text-xs font-mono text-foreground">
-              {business.phone}
+              {business.phone || "—"}
             </span>
           </div>
-          <button
-            onClick={() => copyToClipboard(business.phone, "phone")}
-            className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-cyan"
-            title="Copy phone number"
-          >
-            {copied === "phone" ? (
-              <Check size={12} className="text-success" />
+          {business.phone && (
+            <button
+              onClick={() => copyToClipboard(business.phone, "phone")}
+              className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-cyan"
+              title="Copy phone number"
+            >
+              {copied === "phone" ? (
+                <Check size={12} className="text-success" />
+              ) : (
+                <Copy size={12} />
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Email row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <Mail size={13} className="text-muted-foreground shrink-0" />
+            {emailSearched ? (
+              email ? (
+                <span className="text-xs font-mono text-foreground truncate">
+                  {email}
+                  {emailConfidence != null && (
+                    <span className="ml-1 text-muted-foreground">({emailConfidence}%)</span>
+                  )}
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground italic">No email found</span>
+              )
             ) : (
-              <Copy size={12} />
+              <button
+                onClick={handleFindEmail}
+                disabled={emailLoading}
+                className="text-xs font-medium text-cyan hover:underline disabled:opacity-60 flex items-center gap-1"
+              >
+                {emailLoading ? (
+                  <>
+                    <Loader2 size={11} className="animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  "Find Email"
+                )}
+              </button>
             )}
-          </button>
+          </div>
+          {emailSearched && email && (
+            <button
+              onClick={() => copyToClipboard(email, "email")}
+              className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-cyan shrink-0"
+              title="Copy email"
+            >
+              {copied === "email" ? (
+                <Check size={12} className="text-success" />
+              ) : (
+                <Copy size={12} />
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -132,7 +196,14 @@ export const BusinessCard = ({ business, index }: BusinessCardProps) => {
       <button
         onClick={() =>
           copyToClipboard(
-            `${business.name}\n${business.address}, ${business.city}, ${business.state}\n${business.phone}`,
+            [
+              business.name,
+              `${business.address}, ${business.city}, ${business.state}`,
+              business.phone,
+              email,
+            ]
+              .filter(Boolean)
+              .join("\n"),
             "all"
           )
         }
