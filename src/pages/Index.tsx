@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { HeroSection } from "@/components/HeroSection";
 import { BusinessCard } from "@/components/BusinessCard";
+import { BusinessTable } from "@/components/BusinessTable";
 import { StatsBar } from "@/components/StatsBar";
-import { FilterBar } from "@/components/FilterBar";
+import { FilterBar, ViewMode } from "@/components/FilterBar";
 import { EmptyState } from "@/components/EmptyState";
 import { Business } from "@/data/mockBusinesses";
 import { findBusinessesWithoutWebsites } from "@/lib/placesApi";
