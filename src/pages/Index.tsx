@@ -60,6 +60,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [sort, setSort] = useState<SortOption>("rating");
+  const [view, setView] = useState<ViewMode>("grid");
   const [locationLabel, setLocationLabel] = useState<string>("");
 
   const handleSearch = async (city: string, category: string) => {
