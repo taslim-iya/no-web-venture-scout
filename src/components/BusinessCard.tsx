@@ -1,19 +1,25 @@
 import { useState } from "react";
-import { Phone, MapPin, Star, Copy, Check, Globe, Calendar, Users, Mail, Loader2 } from "lucide-react";
+import { Phone, MapPin, Star, Copy, Check, Globe, Calendar, Users, Mail, Loader2, Bookmark, BookmarkCheck } from "lucide-react";
 import { Business } from "@/data/mockBusinesses";
 import { findEmailForBusiness } from "@/lib/hunterApi";
+import { saveLead } from "@/lib/savedLeadsApi";
+import { useToast } from "@/components/ui/use-toast";
 
 type BusinessCardProps = {
   business: Business;
   index: number;
+  onLeadSaved?: () => void;
 };
 
-export const BusinessCard = ({ business, index }: BusinessCardProps) => {
+export const BusinessCard = ({ business, index, onLeadSaved }: BusinessCardProps) => {
+  const { toast } = useToast();
   const [copied, setCopied] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(business.email ?? null);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailSearched, setEmailSearched] = useState(!!business.email);
   const [emailConfidence, setEmailConfidence] = useState<number | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -29,6 +35,20 @@ export const BusinessCard = ({ business, index }: BusinessCardProps) => {
     setEmailConfidence(result.confidence ?? null);
     setEmailSearched(true);
     setEmailLoading(false);
+  };
+
+  const handleSaveLead = async () => {
+    if (saved || saving) return;
+    setSaving(true);
+    const { error } = await saveLead(business, email);
+    setSaving(false);
+    if (error) {
+      toast({ title: "Error saving lead", description: error, variant: "destructive" });
+    } else {
+      setSaved(true);
+      toast({ title: "Lead saved!", description: business.name });
+      onLeadSaved?.();
+    }
   };
 
   const staggerClass = index < 6 ? `stagger-${Math.min(index + 1, 6)}` : "";
@@ -192,35 +212,62 @@ export const BusinessCard = ({ business, index }: BusinessCardProps) => {
         )}
       </div>
 
-      {/* CTA */}
-      <button
-        onClick={() =>
-          copyToClipboard(
-            [
-              business.name,
-              `${business.address}, ${business.city}, ${business.state}`,
-              business.phone,
-              email,
-            ]
-              .filter(Boolean)
-              .join("\n"),
-            "all"
-          )
-        }
-        className="mt-3 w-full h-8 rounded-lg border border-cyan/30 text-cyan text-xs font-medium hover:bg-cyan/10 transition-all flex items-center justify-center gap-1.5"
-      >
-        {copied === "all" ? (
-          <>
-            <Check size={12} />
-            Copied!
-          </>
-        ) : (
-          <>
-            <Copy size={12} />
-            Copy Lead Info
-          </>
-        )}
-      </button>
+      {/* CTAs */}
+      <div className="mt-3 flex gap-2">
+        <button
+          onClick={() =>
+            copyToClipboard(
+              [
+                business.name,
+                `${business.address}, ${business.city}, ${business.state}`,
+                business.phone,
+                email,
+              ]
+                .filter(Boolean)
+                .join("\n"),
+              "all"
+            )
+          }
+          className="flex-1 h-8 rounded-lg border border-cyan/30 text-cyan text-xs font-medium hover:bg-cyan/10 transition-all flex items-center justify-center gap-1.5"
+        >
+          {copied === "all" ? (
+            <>
+              <Check size={12} />
+              Copied!
+            </>
+          ) : (
+            <>
+              <Copy size={12} />
+              Copy Info
+            </>
+          )}
+        </button>
+
+        <button
+          onClick={handleSaveLead}
+          disabled={saved || saving}
+          className={`h-8 px-3 rounded-lg border text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+            saved
+              ? "border-success/30 text-success bg-success/10 cursor-default"
+              : "border-border text-muted-foreground hover:border-cyan/30 hover:text-cyan hover:bg-cyan/5"
+          }`}
+          title={saved ? "Lead saved" : "Save this lead"}
+        >
+          {saving ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : saved ? (
+            <>
+              <BookmarkCheck size={12} />
+              Saved
+            </>
+          ) : (
+            <>
+              <Bookmark size={12} />
+              Save
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 };

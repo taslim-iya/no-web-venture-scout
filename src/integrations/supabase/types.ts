@@ -14,7 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      saved_leads: {
+        Row: {
+          address: string
+          category: string
+          city: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string
+          place_id: string
+          rating: number
+          review_count: number
+          state: string
+          status: Database["public"]["Enums"]["outreach_status"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          category?: string
+          city?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string
+          place_id: string
+          rating?: number
+          review_count?: number
+          state?: string
+          status?: Database["public"]["Enums"]["outreach_status"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          category?: string
+          city?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string
+          place_id?: string
+          rating?: number
+          review_count?: number
+          state?: string
+          status?: Database["public"]["Enums"]["outreach_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +76,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      outreach_status: "new" | "contacted" | "in_progress" | "closed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +203,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      outreach_status: ["new", "contacted", "in_progress", "closed"],
+    },
   },
 } as const
