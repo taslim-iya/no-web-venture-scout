@@ -1,12 +1,14 @@
-import { SlidersHorizontal } from "lucide-react";
-import { Business } from "@/data/mockBusinesses";
+import { SlidersHorizontal, LayoutGrid, List } from "lucide-react";
 
 type SortOption = "rating" | "reviews" | "name" | "established";
+export type ViewMode = "grid" | "table";
 
 type FilterBarProps = {
   sort: SortOption;
   onSortChange: (s: SortOption) => void;
   total: number;
+  view: ViewMode;
+  onViewChange: (v: ViewMode) => void;
 };
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
