@@ -6,7 +6,7 @@ import { StatsBar } from "@/components/StatsBar";
 import { FilterBar, ViewMode } from "@/components/FilterBar";
 import { EmptyState } from "@/components/EmptyState";
 import { SavedLeadsDrawer } from "@/components/SavedLeadsDrawer";
-import { Business } from "@/data/mockBusinesses";
+import { Business, SearchMode } from "@/data/mockBusinesses";
 import { findBusinessesWithoutWebsites } from "@/lib/placesApi";
 import { useToast } from "@/components/ui/use-toast";
 import { BookmarkCheck } from "lucide-react";
@@ -68,7 +68,7 @@ const Index = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerRefreshKey, setDrawerRefreshKey] = useState(0);
 
-  const handleSearch = async (city: string, category: string) => {
+  const handleSearch = async (city: string, category: string, mode: SearchMode = "no_website") => {
     if (!city.trim()) {
       toast({ title: "Enter a city", description: "Please enter a city to search.", variant: "destructive" });
       return;
@@ -78,7 +78,7 @@ const Index = () => {
     setHasSearched(true);
     setBusinesses([]);
 
-    const result = await findBusinessesWithoutWebsites(city, category);
+    const result = await findBusinessesWithoutWebsites(city, category, mode);
 
     setIsLoading(false);
 

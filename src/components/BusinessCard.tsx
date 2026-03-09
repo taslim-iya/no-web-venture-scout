@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, MapPin, Star, Copy, Check, Globe, Calendar, Users, Mail, Loader2, Bookmark, BookmarkCheck } from "lucide-react";
+import { Phone, MapPin, Star, Copy, Check, Globe, Calendar, Users, Mail, Loader2, Bookmark, BookmarkCheck, AlertTriangle, ExternalLink, WifiOff } from "lucide-react";
 import { Business } from "@/data/mockBusinesses";
 import { findEmailForBusiness } from "@/lib/hunterApi";
 import { saveLead } from "@/lib/savedLeadsApi";
@@ -73,15 +73,27 @@ export const BusinessCard = ({ business, index, onLeadSaved }: BusinessCardProps
 
   const catColor = categoryColors[business.category] || "text-muted-foreground";
 
+  const isPoor = business.websiteQuality === "poor";
+  const isNone = !business.hasWebsite;
+
   return (
     <div
       className={`group relative bg-gradient-card border border-border hover:border-cyan/30 rounded-xl p-5 shadow-card hover:shadow-card-hover transition-all duration-300 animate-fade-in-up opacity-0 ${staggerClass}`}
       style={{ animationFillMode: "forwards" }}
     >
-      {/* No website badge */}
-      <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-destructive/15 border border-destructive/30 text-destructive rounded-full px-2.5 py-1 text-xs font-mono font-medium">
-        <Globe size={10} />
-        No Website
+      {/* Website quality badge */}
+      <div className="absolute top-4 right-4">
+        {isNone ? (
+          <div className="flex items-center gap-1.5 bg-destructive/15 border border-destructive/30 text-destructive rounded-full px-2.5 py-1 text-xs font-mono font-medium">
+            <Globe size={10} />
+            No Website
+          </div>
+        ) : isPoor ? (
+          <div className="flex items-center gap-1.5 bg-warning/15 border border-warning/30 text-warning rounded-full px-2.5 py-1 text-xs font-mono font-medium">
+            <AlertTriangle size={10} />
+            Poor Site
+          </div>
+        ) : null}
       </div>
 
       {/* Header */}
@@ -194,6 +206,46 @@ export const BusinessCard = ({ business, index, onLeadSaved }: BusinessCardProps
             </button>
           )}
         </div>
+
+        {/* Website info for poor-website leads */}
+        {isPoor && business.websiteUrl && (
+          <div className="flex items-start gap-2.5">
+            {business.websiteIssues?.includes('Site down') ? (
+              <WifiOff size={13} className="text-destructive shrink-0 mt-0.5" />
+            ) : (
+              <AlertTriangle size={13} className="text-warning shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1 min-w-0 space-y-0.5">
+              <a
+                href={business.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-mono text-muted-foreground hover:text-cyan truncate flex items-center gap-1 transition-colors"
+              >
+                {business.websiteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '').slice(0, 30)}
+                {business.websiteUrl.length > 33 && '…'}
+                <ExternalLink size={10} />
+              </a>
+              {business.websiteIssues && business.websiteIssues.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {business.websiteIssues.map((issue) => (
+                    <span
+                      key={issue}
+                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-warning/10 text-warning border border-warning/20"
+                    >
+                      {issue}
+                    </span>
+                  ))}
+                  {business.websiteScore !== null && business.websiteScore !== undefined && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-destructive/10 text-destructive border border-destructive/20">
+                      Score {business.websiteScore}/100
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Meta info */}
@@ -222,6 +274,7 @@ export const BusinessCard = ({ business, index, onLeadSaved }: BusinessCardProps
                 `${business.address}, ${business.city}, ${business.state}`,
                 business.phone,
                 email,
+                business.websiteUrl,
               ]
                 .filter(Boolean)
                 .join("\n"),

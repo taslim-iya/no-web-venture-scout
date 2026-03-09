@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Business } from "@/data/mockBusinesses";
+import { Business, SearchMode } from "@/data/mockBusinesses";
 
 export type SearchResult = {
   businesses: Business[];
@@ -10,10 +10,11 @@ export type SearchResult = {
 
 export const findBusinessesWithoutWebsites = async (
   city: string,
-  category: string
+  category: string,
+  mode: SearchMode = "no_website"
 ): Promise<SearchResult> => {
   const { data, error } = await supabase.functions.invoke("find-businesses", {
-    body: { city, category },
+    body: { city, category, mode },
   });
 
   if (error) {
