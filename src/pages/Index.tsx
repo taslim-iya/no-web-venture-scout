@@ -30,7 +30,7 @@ const sortBusinesses = (businesses: Business[], sort: SortOption): Business[] =>
 };
 
 const exportCSV = (businesses: Business[]) => {
-  const headers = ["Name", "Category", "Address", "City", "State", "Phone", "Rating", "Reviews"];
+  const headers = ["Name", "Category", "Address", "City", "State", "Phone", "Email", "Rating", "Reviews"];
   const rows = businesses.map((b) => [
     b.name,
     b.category,
@@ -38,6 +38,7 @@ const exportCSV = (businesses: Business[]) => {
     b.city,
     b.state,
     b.phone,
+    b.email ?? "",
     b.rating,
     b.reviewCount,
   ]);
