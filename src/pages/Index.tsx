@@ -145,7 +145,7 @@ const Index = () => {
 
             {/* Filter bar */}
             {!isLoading && businesses.length > 0 && (
-              <FilterBar sort={sort} onSortChange={setSort} total={sorted.length} />
+              <FilterBar sort={sort} onSortChange={setSort} total={sorted.length} view={view} onViewChange={setView} />
             )}
 
             {/* Loading skeleton */}
@@ -166,13 +166,17 @@ const Index = () => {
               </div>
             )}
 
-            {/* Results grid */}
+            {/* Results */}
             {!isLoading && businesses.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sorted.map((business, i) => (
-                  <BusinessCard key={business.id} business={business} index={i} />
-                ))}
-              </div>
+              view === "grid" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {sorted.map((business, i) => (
+                    <BusinessCard key={business.id} business={business} index={i} />
+                  ))}
+                </div>
+              ) : (
+                <BusinessTable businesses={sorted} />
+              )
             )}
 
             {/* Empty state */}
