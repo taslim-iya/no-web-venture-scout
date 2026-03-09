@@ -37,6 +37,20 @@ export const BusinessCard = ({ business, index, onLeadSaved }: BusinessCardProps
     setEmailLoading(false);
   };
 
+  const handleSaveLead = async () => {
+    if (saved || saving) return;
+    setSaving(true);
+    const { error } = await saveLead(business, email);
+    setSaving(false);
+    if (error) {
+      toast({ title: "Error saving lead", description: error, variant: "destructive" });
+    } else {
+      setSaved(true);
+      toast({ title: "Lead saved!", description: business.name });
+      onLeadSaved?.();
+    }
+  };
+
   const staggerClass = index < 6 ? `stagger-${Math.min(index + 1, 6)}` : "";
 
   const categoryColors: Record<string, string> = {
