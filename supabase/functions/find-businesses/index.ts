@@ -80,8 +80,9 @@ Deno.serve(async (req) => {
     const geocodeData = await geocodeRes.json();
 
     if (geocodeData.status !== 'OK' || !geocodeData.results?.length) {
+      console.error('Geocode failed:', geocodeData.status, geocodeData.error_message);
       return new Response(
-        JSON.stringify({ error: `Could not find location: ${city}`, businesses: [] }),
+        JSON.stringify({ error: `Could not find location: ${city}. Geocode status: ${geocodeData.status}${geocodeData.error_message ? ' — ' + geocodeData.error_message : ''}`, businesses: [] }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
