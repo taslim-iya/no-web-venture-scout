@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { HeroSection } from "@/components/HeroSection";
 import { BusinessCard } from "@/components/BusinessCard";
+import { BusinessTable } from "@/components/BusinessTable";
 import { StatsBar } from "@/components/StatsBar";
-import { FilterBar } from "@/components/FilterBar";
+import { FilterBar, ViewMode } from "@/components/FilterBar";
 import { EmptyState } from "@/components/EmptyState";
 import { Business } from "@/data/mockBusinesses";
 import { findBusinessesWithoutWebsites } from "@/lib/placesApi";
@@ -59,6 +60,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [sort, setSort] = useState<SortOption>("rating");
+  const [view, setView] = useState<ViewMode>("grid");
   const [locationLabel, setLocationLabel] = useState<string>("");
 
   const handleSearch = async (city: string, category: string) => {
@@ -143,7 +145,7 @@ const Index = () => {
 
             {/* Filter bar */}
             {!isLoading && businesses.length > 0 && (
-              <FilterBar sort={sort} onSortChange={setSort} total={sorted.length} />
+              <FilterBar sort={sort} onSortChange={setSort} total={sorted.length} view={view} onViewChange={setView} />
             )}
 
             {/* Loading skeleton */}
@@ -164,13 +166,17 @@ const Index = () => {
               </div>
             )}
 
-            {/* Results grid */}
+            {/* Results */}
             {!isLoading && businesses.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sorted.map((business, i) => (
-                  <BusinessCard key={business.id} business={business} index={i} />
-                ))}
-              </div>
+              view === "grid" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {sorted.map((business, i) => (
+                    <BusinessCard key={business.id} business={business} index={i} />
+                  ))}
+                </div>
+              ) : (
+                <BusinessTable businesses={sorted} />
+              )
             )}
 
             {/* Empty state */}
