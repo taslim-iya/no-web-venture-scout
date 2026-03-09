@@ -78,7 +78,7 @@ const Index = () => {
     setHasSearched(true);
     setBusinesses([]);
 
-    const result = await findBusinessesWithoutWebsites(city, category);
+    const result = await findBusinessesWithoutWebsites(city, category, mode);
 
     setIsLoading(false);
 
