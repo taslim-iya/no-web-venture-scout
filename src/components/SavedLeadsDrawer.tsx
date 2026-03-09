@@ -117,7 +117,7 @@ export const SavedLeadsDrawer = ({ open, onClose, refreshKey }: SavedLeadsDrawer
                 {leads.length === 0 ? "No saved leads yet" : "No leads match this filter"}
               </p>
               <p className="text-xs text-muted-foreground mt-1 opacity-60">
-                {leads.length === 0 ? "Click "Save Lead" on any result card" : "Try a different status filter"}
+                {leads.length === 0 ? 'Click "Save Lead" on any result card' : "Try a different status filter"}
               </p>
             </div>
           )}
