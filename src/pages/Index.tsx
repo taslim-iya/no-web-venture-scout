@@ -68,7 +68,7 @@ const Index = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerRefreshKey, setDrawerRefreshKey] = useState(0);
 
-  const handleSearch = async (city: string, category: string) => {
+  const handleSearch = async (city: string, category: string, mode: SearchMode = "no_website") => {
     if (!city.trim()) {
       toast({ title: "Enter a city", description: "Please enter a city to search.", variant: "destructive" });
       return;
