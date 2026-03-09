@@ -51,6 +51,40 @@ interface NearbySearchResult {
   business_status?: string;
 }
 
+async function fetchAllNearbyPages(url: string, API_KEY: string): Promise<string[]> {
+  const placeIds: string[] = [];
+  let nextPageToken: string | undefined;
+  let pageCount = 0;
+  const MAX_PAGES = 3; // Google allows max 3 pages per search
+
+  do {
+    const pageUrl = nextPageToken
+      ? `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${nextPageToken}&key=${API_KEY}`
+      : url;
+
+    // Google requires a short delay before using pagetoken
+    if (nextPageToken) {
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+
+    const res = await fetch(pageUrl);
+    const data = await res.json();
+
+    if (data.status === 'OK' && data.results) {
+      for (const place of data.results as NearbySearchResult[]) {
+        if (place.place_id && !placeIds.includes(place.place_id)) {
+          placeIds.push(place.place_id);
+        }
+      }
+    }
+
+    nextPageToken = data.next_page_token;
+    pageCount++;
+  } while (nextPageToken && pageCount < MAX_PAGES);
+
+  return placeIds;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -93,24 +127,21 @@ Deno.serve(async (req) => {
     // Determine which types to search
     const selectedTypes = category && category !== 'All Categories'
       ? CATEGORY_TO_TYPES[category] || [category.toLowerCase().replace(/ /g, '_')]
-      : Object.values(CATEGORY_TO_TYPES).flat().slice(0, 5); // limit for all-categories
+      : Object.values(CATEGORY_TO_TYPES).flat().slice(0, 8); // broader search for all categories
 
-    // Step 2: Search for businesses using Nearby Search
+    // Step 2: Search for businesses using Nearby Search with pagination (up to 3 pages = 60 results per type)
     const placeIds: string[] = [];
     const radius = 15000; // 15km
 
-    for (const type of selectedTypes.slice(0, 3)) {
+    // Search all selected types (no slice limit)
+    for (const type of selectedTypes) {
       const nearbyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${API_KEY}`;
-      const nearbyRes = await fetch(nearbyUrl);
-      const nearbyData = await nearbyRes.json();
-
-      if (nearbyData.status === 'OK' && nearbyData.results) {
-        for (const place of nearbyData.results as NearbySearchResult[]) {
-          if (place.place_id && !placeIds.includes(place.place_id)) {
-            placeIds.push(place.place_id);
-          }
-        }
+      const ids = await fetchAllNearbyPages(nearbyUrl, API_KEY);
+      for (const id of ids) {
+        if (!placeIds.includes(id)) placeIds.push(id);
       }
+      // Stop if we already have way more than needed to find 200 without websites
+      if (placeIds.length >= 600) break;
     }
 
     if (placeIds.length === 0) {
@@ -122,13 +153,14 @@ Deno.serve(async (req) => {
 
     // Step 3: Fetch details for each place, filter those WITHOUT a website
     const businesses = [];
-    const detailsFields = 'place_id,name,formatted_address,formatted_phone_number,rating,user_ratings_total,website,types,business_status';
+    // Note: Google Places API does not expose email directly; we request all available contact fields
+    const detailsFields = 'place_id,name,formatted_address,formatted_phone_number,international_phone_number,rating,user_ratings_total,website,types,business_status';
 
-    // Process in parallel batches of 5 to avoid rate limits
-    const BATCH_SIZE = 5;
-    const MAX_RESULTS = 40;
+    // Process in parallel batches of 10
+    const BATCH_SIZE = 10;
+    const MAX_RESULTS = 200;
 
-    for (let i = 0; i < Math.min(placeIds.length, MAX_RESULTS); i += BATCH_SIZE) {
+    for (let i = 0; i < placeIds.length && businesses.length < MAX_RESULTS; i += BATCH_SIZE) {
       const batch = placeIds.slice(i, i + BATCH_SIZE);
       const batchPromises = batch.map((placeId) =>
         fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${detailsFields}&key=${API_KEY}`)
@@ -138,6 +170,7 @@ Deno.serve(async (req) => {
       const batchResults = await Promise.all(batchPromises);
 
       for (const detailData of batchResults) {
+        if (businesses.length >= MAX_RESULTS) break;
         if (detailData.status !== 'OK' || !detailData.result) continue;
 
         const place = detailData.result as PlaceResult;
@@ -150,7 +183,7 @@ Deno.serve(async (req) => {
 
         // Extract city/state from formatted_address
         const addressParts = (place.formatted_address || '').split(',');
-        const city = addressParts[addressParts.length - 3]?.trim() || '';
+        const cityPart = addressParts[addressParts.length - 3]?.trim() || '';
         const stateZip = addressParts[addressParts.length - 2]?.trim() || '';
         const state = stateZip.split(' ')[0] || '';
         const streetAddress = addressParts.slice(0, -3).join(',').trim() || place.vicinity || '';
@@ -165,12 +198,13 @@ Deno.serve(async (req) => {
           name: place.name,
           category: matchedCategory,
           address: streetAddress,
-          city,
+          city: cityPart,
           state,
-          phone: place.formatted_phone_number || '',
+          phone: place.formatted_phone_number || place.international_phone_number || '',
           rating: place.rating || 0,
           reviewCount: place.user_ratings_total || 0,
           hasWebsite: false,
+          email: null, // Google Places API does not provide email addresses
         });
       }
     }
