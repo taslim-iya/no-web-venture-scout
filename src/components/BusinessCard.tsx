@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Phone, MapPin, Star, Copy, Check, Globe, Calendar, Users, Mail, Loader2 } from "lucide-react";
+import { Phone, MapPin, Star, Copy, Check, Globe, Calendar, Users, Mail, Loader2, Bookmark, BookmarkCheck } from "lucide-react";
 import { Business } from "@/data/mockBusinesses";
 import { findEmailForBusiness } from "@/lib/hunterApi";
+import { saveLead } from "@/lib/savedLeadsApi";
+import { useToast } from "@/components/ui/use-toast";
 
 type BusinessCardProps = {
   business: Business;
   index: number;
+  onLeadSaved?: () => void;
 };
 
 export const BusinessCard = ({ business, index }: BusinessCardProps) => {
