@@ -1,3 +1,5 @@
+export type WebsiteQuality = "none" | "poor" | "ok";
+
 export type Business = {
   id: string;
   name: string;
@@ -8,11 +10,17 @@ export type Business = {
   phone: string;
   rating: number;
   reviewCount: number;
-  hasWebsite: false;
+  hasWebsite: boolean;
+  websiteUrl?: string | null;
+  websiteScore?: number | null;
+  websiteQuality?: WebsiteQuality;
+  websiteIssues?: string[];
   employees?: string;
   yearEstablished?: number;
   email?: string;
 };
+
+export type SearchMode = "no_website" | "poor_website" | "both";
 
 export const CATEGORIES = [
   "All Categories",

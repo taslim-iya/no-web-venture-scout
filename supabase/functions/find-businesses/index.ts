@@ -3,7 +3,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Maps our app categories to Google Places types
 const CATEGORY_TO_TYPES: Record<string, string[]> = {
   "Restaurant": ["restaurant"],
   "Plumber": ["plumber"],
@@ -22,6 +21,8 @@ const CATEGORY_TO_TYPES: Record<string, string[]> = {
   "Contractor": ["general_contractor"],
 };
 
+type WebsiteQuality = "none" | "poor" | "ok";
+
 interface PlaceResult {
   place_id: string;
   name: string;
@@ -33,10 +34,6 @@ interface PlaceResult {
   user_ratings_total?: number;
   website?: string;
   types?: string[];
-  geometry?: {
-    location: { lat: number; lng: number };
-  };
-  opening_hours?: { open_now: boolean };
   business_status?: string;
 }
 
@@ -51,18 +48,75 @@ interface NearbySearchResult {
   business_status?: string;
 }
 
+interface PageSpeedResult {
+  score: number | null;
+  isMobile: boolean;
+  isHTTPS: boolean;
+  isDown: boolean;
+}
+
+async function checkWebsiteQuality(url: string): Promise<PageSpeedResult> {
+  const result: PageSpeedResult = { score: null, isMobile: false, isHTTPS: false, isDown: false };
+
+  // Normalise URL
+  let normalised = url.trim();
+  if (!normalised.startsWith('http://') && !normalised.startsWith('https://')) {
+    normalised = 'https://' + normalised;
+  }
+  result.isHTTPS = normalised.startsWith('https://');
+
+  // Quick liveness check (5s timeout)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(normalised, { method: 'HEAD', signal: controller.signal, redirect: 'follow' });
+    clearTimeout(timeoutId);
+    if (!res.ok && res.status >= 400) {
+      result.isDown = true;
+      return result;
+    }
+  } catch {
+    result.isDown = true;
+    return result;
+  }
+
+  // PageSpeed Insights (free public API, no key required for basic usage)
+  try {
+    const psUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(normalised)}&strategy=mobile&category=PERFORMANCE`;
+    const psRes = await fetch(psUrl);
+    if (psRes.ok) {
+      const psData = await psRes.json();
+      const perfScore: number | undefined = psData?.lighthouseResult?.categories?.performance?.score;
+      if (perfScore !== undefined) {
+        result.score = Math.round(perfScore * 100);
+        result.isMobile = result.score >= 50;
+      }
+    }
+  } catch {
+    // PageSpeed check failed — we still have liveness info
+  }
+
+  return result;
+}
+
+function websiteQualityLabel(check: PageSpeedResult): WebsiteQuality {
+  if (check.isDown) return "poor";
+  if (check.score !== null && check.score < 50) return "poor";
+  if (!check.isHTTPS) return "poor";
+  return "ok";
+}
+
 async function fetchAllNearbyPages(url: string, API_KEY: string): Promise<string[]> {
   const placeIds: string[] = [];
   let nextPageToken: string | undefined;
   let pageCount = 0;
-  const MAX_PAGES = 3; // Google allows max 3 pages per search
+  const MAX_PAGES = 3;
 
   do {
     const pageUrl = nextPageToken
       ? `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${nextPageToken}&key=${API_KEY}`
       : url;
 
-    // Google requires a short delay before using pagetoken
     if (nextPageToken) {
       await new Promise((r) => setTimeout(r, 2000));
     }
@@ -99,7 +153,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { city, category } = await req.json();
+    // mode: "no_website" | "poor_website" | "both"
+    const { city, category, mode = 'no_website' } = await req.json();
 
     if (!city || !city.trim()) {
       return new Response(
@@ -108,15 +163,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 1: Geocode the city to get lat/lng
+    // Step 1: Geocode
     const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(city)}&key=${API_KEY}`;
     const geocodeRes = await fetch(geocodeUrl);
     const geocodeData = await geocodeRes.json();
 
     if (geocodeData.status !== 'OK' || !geocodeData.results?.length) {
-      console.error('Geocode failed:', geocodeData.status, geocodeData.error_message);
       return new Response(
-        JSON.stringify({ error: `Could not find location: ${city}. Geocode status: ${geocodeData.status}${geocodeData.error_message ? ' — ' + geocodeData.error_message : ''}`, businesses: [] }),
+        JSON.stringify({ error: `Could not find location: ${city}. Geocode status: ${geocodeData.status}`, businesses: [] }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -124,23 +178,20 @@ Deno.serve(async (req) => {
     const { lat, lng } = geocodeData.results[0].geometry.location;
     const locationName = geocodeData.results[0].formatted_address;
 
-    // Determine which types to search
     const selectedTypes = category && category !== 'All Categories'
       ? CATEGORY_TO_TYPES[category] || [category.toLowerCase().replace(/ /g, '_')]
-      : Object.values(CATEGORY_TO_TYPES).flat().slice(0, 8); // broader search for all categories
+      : Object.values(CATEGORY_TO_TYPES).flat().slice(0, 8);
 
-    // Step 2: Search for businesses using Nearby Search with pagination (up to 3 pages = 60 results per type)
+    // Step 2: Nearby search
     const placeIds: string[] = [];
-    const radius = 15000; // 15km
+    const radius = 15000;
 
-    // Search all selected types (no slice limit)
     for (const type of selectedTypes) {
       const nearbyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${API_KEY}`;
       const ids = await fetchAllNearbyPages(nearbyUrl, API_KEY);
       for (const id of ids) {
         if (!placeIds.includes(id)) placeIds.push(id);
       }
-      // Stop if we already have way more than needed to find 200 without websites
       if (placeIds.length >= 600) break;
     }
 
@@ -151,12 +202,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 3: Fetch details for each place, filter those WITHOUT a website
+    // Step 3: Fetch place details
     const businesses = [];
-    // Note: Google Places API does not expose email directly; we request all available contact fields
     const detailsFields = 'place_id,name,formatted_address,formatted_phone_number,international_phone_number,rating,user_ratings_total,website,types,business_status';
-
-    // Process in parallel batches of 10
     const BATCH_SIZE = 10;
     const MAX_RESULTS = 200;
 
@@ -169,43 +217,97 @@ Deno.serve(async (req) => {
 
       const batchResults = await Promise.all(batchPromises);
 
+      // For poor_website mode, check PageSpeed in parallel for places that have websites
+      const poorWebsiteChecks: Promise<{ placeResult: PlaceResult; check: PageSpeedResult } | null>[] = [];
+
       for (const detailData of batchResults) {
-        if (businesses.length >= MAX_RESULTS) break;
         if (detailData.status !== 'OK' || !detailData.result) continue;
-
         const place = detailData.result as PlaceResult;
-
-        // Only include businesses WITHOUT a website
-        if (place.website) continue;
-
-        // Skip permanently closed businesses
         if (place.business_status === 'CLOSED_PERMANENTLY') continue;
 
-        // Extract city/state from formatted_address
-        const addressParts = (place.formatted_address || '').split(',');
-        const cityPart = addressParts[addressParts.length - 3]?.trim() || '';
-        const stateZip = addressParts[addressParts.length - 2]?.trim() || '';
-        const state = stateZip.split(' ')[0] || '';
-        const streetAddress = addressParts.slice(0, -3).join(',').trim() || place.vicinity || '';
+        if (!place.website) {
+          // No website — include if mode is "no_website" or "both"
+          if (mode === 'no_website' || mode === 'both') {
+            const addressParts = (place.formatted_address || '').split(',');
+            const cityPart = addressParts[addressParts.length - 3]?.trim() || '';
+            const stateZip = addressParts[addressParts.length - 2]?.trim() || '';
+            const state = stateZip.split(' ')[0] || '';
+            const streetAddress = addressParts.slice(0, -3).join(',').trim() || place.vicinity || '';
 
-        // Map Google types to our category
-        const matchedCategory = Object.entries(CATEGORY_TO_TYPES).find(([, types]) =>
-          place.types?.some((t) => types.includes(t))
-        )?.[0] || (place.types?.[0]?.replace(/_/g, ' ') || 'Business');
+            const matchedCategory = Object.entries(CATEGORY_TO_TYPES).find(([, types]) =>
+              place.types?.some((t) => types.includes(t))
+            )?.[0] || (place.types?.[0]?.replace(/_/g, ' ') || 'Business');
 
-        businesses.push({
-          id: place.place_id,
-          name: place.name,
-          category: matchedCategory,
-          address: streetAddress,
-          city: cityPart,
-          state,
-          phone: place.formatted_phone_number || place.international_phone_number || '',
-          rating: place.rating || 0,
-          reviewCount: place.user_ratings_total || 0,
-          hasWebsite: false,
-          email: null, // Google Places API does not provide email addresses
-        });
+            businesses.push({
+              id: place.place_id,
+              name: place.name,
+              category: matchedCategory,
+              address: streetAddress,
+              city: cityPart,
+              state,
+              phone: place.formatted_phone_number || place.international_phone_number || '',
+              rating: place.rating || 0,
+              reviewCount: place.user_ratings_total || 0,
+              hasWebsite: false,
+              websiteUrl: null,
+              websiteScore: null,
+              websiteQuality: 'none' as WebsiteQuality,
+              email: null,
+            });
+          }
+        } else if (mode === 'poor_website' || mode === 'both') {
+          // Has a website — queue quality check
+          poorWebsiteChecks.push(
+            checkWebsiteQuality(place.website).then((check) => ({ placeResult: place, check }))
+          );
+        }
+      }
+
+      // Resolve poor website checks
+      if (poorWebsiteChecks.length > 0) {
+        const resolved = await Promise.all(poorWebsiteChecks);
+        for (const item of resolved) {
+          if (!item) continue;
+          if (businesses.length >= MAX_RESULTS) break;
+          const { placeResult: place, check } = item;
+          const quality = websiteQualityLabel(check);
+          if (quality !== 'poor') continue; // Skip sites that are fine
+
+          const addressParts = (place.formatted_address || '').split(',');
+          const cityPart = addressParts[addressParts.length - 3]?.trim() || '';
+          const stateZip = addressParts[addressParts.length - 2]?.trim() || '';
+          const state = stateZip.split(' ')[0] || '';
+          const streetAddress = addressParts.slice(0, -3).join(',').trim() || place.vicinity || '';
+
+          const matchedCategory = Object.entries(CATEGORY_TO_TYPES).find(([, types]) =>
+            place.types?.some((t) => types.includes(t))
+          )?.[0] || (place.types?.[0]?.replace(/_/g, ' ') || 'Business');
+
+          const issueLabels: string[] = [];
+          if (check.isDown) issueLabels.push('Site down');
+          else {
+            if (!check.isHTTPS) issueLabels.push('No HTTPS');
+            if (check.score !== null && check.score < 50) issueLabels.push(`Perf: ${check.score}/100`);
+          }
+
+          businesses.push({
+            id: place.place_id,
+            name: place.name,
+            category: matchedCategory,
+            address: streetAddress,
+            city: cityPart,
+            state,
+            phone: place.formatted_phone_number || place.international_phone_number || '',
+            rating: place.rating || 0,
+            reviewCount: place.user_ratings_total || 0,
+            hasWebsite: true,
+            websiteUrl: place.website || null,
+            websiteScore: check.score,
+            websiteQuality: 'poor' as WebsiteQuality,
+            websiteIssues: issueLabels,
+            email: null,
+          });
+        }
       }
     }
 
