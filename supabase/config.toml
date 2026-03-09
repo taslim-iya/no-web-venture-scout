@@ -2,3 +2,6 @@ project_id = "jbnmbhpttumyncyjzjpj"
 
 [functions.find-businesses]
 verify_jwt = false
+
+[functions.find-email]
+verify_jwt = false
