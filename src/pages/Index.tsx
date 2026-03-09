@@ -4,7 +4,9 @@ import { BusinessCard } from "@/components/BusinessCard";
 import { StatsBar } from "@/components/StatsBar";
 import { FilterBar } from "@/components/FilterBar";
 import { EmptyState } from "@/components/EmptyState";
-import { Business, searchBusinesses } from "@/data/mockBusinesses";
+import { Business } from "@/data/mockBusinesses";
+import { findBusinessesWithoutWebsites } from "@/lib/placesApi";
+import { useToast } from "@/components/ui/use-toast";
 
 type SortOption = "rating" | "reviews" | "name" | "established";
 
@@ -27,7 +29,7 @@ const sortBusinesses = (businesses: Business[], sort: SortOption): Business[] =>
 };
 
 const exportCSV = (businesses: Business[]) => {
-  const headers = ["Name", "Category", "Address", "City", "State", "Phone", "Rating", "Reviews", "Est. Year"];
+  const headers = ["Name", "Category", "Address", "City", "State", "Phone", "Rating", "Reviews"];
   const rows = businesses.map((b) => [
     b.name,
     b.category,
@@ -37,7 +39,6 @@ const exportCSV = (businesses: Business[]) => {
     b.phone,
     b.rating,
     b.reviewCount,
-    b.yearEstablished ?? "",
   ]);
   const csvContent = [headers, ...rows]
     .map((row) => row.map((cell) => `"${cell}"`).join(","))
@@ -53,21 +54,50 @@ const exportCSV = (businesses: Business[]) => {
 };
 
 const Index = () => {
+  const { toast } = useToast();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [sort, setSort] = useState<SortOption>("rating");
+  const [locationLabel, setLocationLabel] = useState<string>("");
 
-  const handleSearch = (city: string, category: string) => {
+  const handleSearch = async (city: string, category: string) => {
+    if (!city.trim()) {
+      toast({ title: "Enter a city", description: "Please enter a city to search.", variant: "destructive" });
+      return;
+    }
+
     setIsLoading(true);
     setHasSearched(true);
+    setBusinesses([]);
 
-    // Simulate async scan
-    setTimeout(() => {
-      const results = searchBusinesses(city, category);
-      setBusinesses(results);
-      setIsLoading(false);
-    }, 1200);
+    const result = await findBusinessesWithoutWebsites(city, category);
+
+    setIsLoading(false);
+
+    if (result.error) {
+      toast({
+        title: "Search failed",
+        description: result.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBusinesses(result.businesses);
+    if (result.location) setLocationLabel(result.location);
+
+    if (result.businesses.length === 0) {
+      toast({
+        title: "No results found",
+        description: `All businesses in "${city}" matching "${category}" appear to have websites, or try a different city/category.`,
+      });
+    } else {
+      toast({
+        title: `Found ${result.businesses.length} leads!`,
+        description: `Businesses without websites in ${result.location ?? city}`,
+      });
+    }
   };
 
   const sorted = sortBusinesses(businesses, sort);
@@ -87,7 +117,7 @@ const Index = () => {
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
           <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-          Demo Mode
+          Live · Google Places
         </div>
       </nav>
 
@@ -99,6 +129,13 @@ const Index = () => {
         {/* Results section */}
         {(hasSearched || businesses.length > 0) && (
           <div className="space-y-5">
+            {/* Location banner */}
+            {locationLabel && !isLoading && (
+              <p className="text-xs text-muted-foreground font-mono">
+                Results for: <span className="text-cyan">{locationLabel}</span>
+              </p>
+            )}
+
             {/* Stats */}
             {!isLoading && businesses.length > 0 && (
               <StatsBar businesses={businesses} onExport={() => exportCSV(businesses)} />
@@ -112,7 +149,7 @@ const Index = () => {
             {/* Loading skeleton */}
             {isLoading && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Array.from({ length: 6 }).map((_, i) => (
+                {Array.from({ length: 9 }).map((_, i) => (
                   <div
                     key={i}
                     className="bg-gradient-card border border-border rounded-xl p-5 space-y-3"
@@ -150,7 +187,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border mt-16 px-6 py-6 text-center">
         <p className="text-xs text-muted-foreground font-mono">
-          nositeﬁnder — demo data only · real implementation requires Google Places API
+          nositeﬁnder · powered by Google Places API · Lovable Cloud
         </p>
       </footer>
     </div>

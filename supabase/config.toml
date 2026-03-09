@@ -1,1 +1,4 @@
 project_id = "jbnmbhpttumyncyjzjpj"
+
+[functions.find-businesses]
+verify_jwt = false
