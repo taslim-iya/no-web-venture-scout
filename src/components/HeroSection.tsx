@@ -1,9 +1,10 @@
 import heroBg from "@/assets/hero-bg.jpg";
 import { Globe, Search, Zap } from "lucide-react";
 import { SearchPanel } from "./SearchPanel";
+import { SearchMode } from "@/data/mockBusinesses";
 
 type HeroSectionProps = {
-  onSearch: (city: string, category: string) => void;
+  onSearch: (city: string, category: string, mode: SearchMode) => void;
   isLoading: boolean;
 };
 
@@ -29,13 +30,13 @@ export const HeroSection = ({ onSearch, isLoading }: HeroSectionProps) => {
         <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4 leading-tight tracking-tight">
           Find businesses{" "}
           <span className="text-cyan relative">
-            without websites
+            missing online
             <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-cyan rounded-full opacity-60" />
           </span>
         </h1>
 
         <p className="text-base text-muted-foreground mb-8 max-w-xl mx-auto leading-relaxed">
-          Discover local businesses with no online presence — your next web design or digital marketing clients.
+          Discover local businesses with no website — or a broken, slow one. Your next web design clients are waiting.
         </p>
 
         {/* Stats row */}
