@@ -111,6 +111,13 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Saved Leads Drawer */}
+      <SavedLeadsDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        refreshKey={drawerRefreshKey}
+      />
+
       {/* Navbar */}
       <nav className="border-b border-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -122,9 +129,18 @@ const Index = () => {
             <span className="text-muted-foreground font-light">.finder</span>
           </span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-          <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-          Live · Google Places
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => { setDrawerOpen(true); setDrawerRefreshKey((k) => k + 1); }}
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-cyan transition-colors border border-border hover:border-cyan/30 rounded-lg px-3 py-1.5"
+          >
+            <BookmarkCheck size={13} />
+            Saved Leads
+          </button>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+            <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+            Live · Google Places
+          </div>
         </div>
       </nav>
 
@@ -176,7 +192,12 @@ const Index = () => {
               view === "grid" ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {sorted.map((business, i) => (
-                    <BusinessCard key={business.id} business={business} index={i} />
+                    <BusinessCard
+                      key={business.id}
+                      business={business}
+                      index={i}
+                      onLeadSaved={() => setDrawerRefreshKey((k) => k + 1)}
+                    />
                   ))}
                 </div>
               ) : (
