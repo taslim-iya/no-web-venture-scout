@@ -65,6 +65,8 @@ const Index = () => {
   const [sort, setSort] = useState<SortOption>("rating");
   const [view, setView] = useState<ViewMode>("grid");
   const [locationLabel, setLocationLabel] = useState<string>("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerRefreshKey, setDrawerRefreshKey] = useState(0);
 
   const handleSearch = async (city: string, category: string) => {
     if (!city.trim()) {
