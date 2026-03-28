@@ -2,6 +2,7 @@ import { useState } from "react";
 import { HeroSection } from "@/components/HeroSection";
 import { BusinessCard } from "@/components/BusinessCard";
 import { BusinessTable } from "@/components/BusinessTable";
+import { BusinessLookup } from "@/components/BusinessLookup";
 import { StatsBar } from "@/components/StatsBar";
 import { FilterBar, ViewMode } from "@/components/FilterBar";
 import { EmptyState } from "@/components/EmptyState";
@@ -9,7 +10,7 @@ import { SavedLeadsDrawer } from "@/components/SavedLeadsDrawer";
 import { Business, SearchMode } from "@/data/mockBusinesses";
 import { findBusinessesWithoutWebsites } from "@/lib/placesApi";
 import { useToast } from "@/components/ui/use-toast";
-import { BookmarkCheck } from "lucide-react";
+import { BookmarkCheck, Search } from "lucide-react";
 
 type SortOption = "rating" | "reviews" | "name" | "established";
 
@@ -148,6 +149,15 @@ const Index = () => {
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
         {/* Hero + Search */}
         <HeroSection onSearch={handleSearch} isLoading={isLoading} />
+
+        {/* Single Business Lookup */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Search size={14} className="text-cyan" />
+            <span>Lookup a specific business or domain</span>
+          </div>
+          <BusinessLookup />
+        </div>
 
         {/* Results section */}
         {(hasSearched || businesses.length > 0) && (

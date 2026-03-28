@@ -106,6 +106,51 @@ function websiteQualityLabel(check: PageSpeedResult): WebsiteQuality {
   return "ok";
 }
 
+function generateAnalysis(check: PageSpeedResult, businessCategory?: string): { analysis: string; recommendations: string[] } {
+  const issues: string[] = [];
+  const recommendations: string[] = [];
+
+  if (check.isDown) {
+    return {
+      analysis: "Website is down or unreachable — potential customers see a broken page.",
+      recommendations: [
+        "Get the site back online immediately",
+        "Set up uptime monitoring",
+        "Consider reliable hosting with 99.9% uptime",
+      ],
+    };
+  }
+
+  if (!check.isHTTPS) {
+    issues.push("No SSL (HTTP only) — browsers show 'Not Secure' warnings");
+    recommendations.push("Install an SSL certificate to enable HTTPS");
+  }
+  if (check.score !== null && check.score < 50) {
+    issues.push(`Poor performance (${check.score}/100)`);
+    recommendations.push("Optimize images, reduce scripts, and improve server response time");
+  }
+  if (!check.isMobile) {
+    issues.push("Not mobile-friendly");
+    recommendations.push("Rebuild with a responsive, mobile-first design");
+  }
+
+  const cat = (businessCategory || '').toLowerCase();
+  if (['restaurant', 'bakery', 'florist'].some(c => cat.includes(c))) {
+    recommendations.push("Add online menu, hours, and ordering buttons");
+  } else if (['plumber', 'electrician', 'contractor', 'landscaping', 'cleaning'].some(c => cat.includes(c))) {
+    recommendations.push("Add a 'Get a Quote' form and list service areas");
+  } else if (['dentist', 'lawyer', 'accountant'].some(c => cat.includes(c))) {
+    recommendations.push("Add testimonials, credentials, and online booking");
+  } else if (cat.includes('salon') || cat.includes('grooming')) {
+    recommendations.push("Add online booking and a photo gallery");
+  }
+
+  return {
+    analysis: issues.length > 0 ? issues.join('. ') + '.' : "Site has issues hurting UX and search rankings.",
+    recommendations: recommendations.slice(0, 4),
+  };
+}
+
 async function fetchAllNearbyPages(url: string, API_KEY: string): Promise<string[]> {
   const placeIds: string[] = [];
   let nextPageToken: string | undefined;
@@ -290,6 +335,8 @@ Deno.serve(async (req) => {
             if (check.score !== null && check.score < 50) issueLabels.push(`Perf: ${check.score}/100`);
           }
 
+          const { analysis, recommendations } = generateAnalysis(check, matchedCategory);
+
           businesses.push({
             id: place.place_id,
             name: place.name,
@@ -305,6 +352,8 @@ Deno.serve(async (req) => {
             websiteScore: check.score,
             websiteQuality: 'poor' as WebsiteQuality,
             websiteIssues: issueLabels,
+            websiteAnalysis: analysis,
+            websiteRecommendations: recommendations,
             email: null,
           });
         }

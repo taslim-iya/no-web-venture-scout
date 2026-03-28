@@ -15,6 +15,8 @@ export type Business = {
   websiteScore?: number | null;
   websiteQuality?: WebsiteQuality;
   websiteIssues?: string[];
+  websiteAnalysis?: string;
+  websiteRecommendations?: string[];
   employees?: string;
   yearEstablished?: number;
   email?: string;
