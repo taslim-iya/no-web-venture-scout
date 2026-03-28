@@ -247,6 +247,38 @@ export const BusinessCard = ({ business, index, onLeadSaved }: BusinessCardProps
             </div>
           </div>
         )}
+
+        {/* Analysis toggle */}
+        {(business.websiteAnalysis || business.websiteRecommendations?.length) && (
+          <div className="mt-1">
+            <button
+              type="button"
+              onClick={() => setShowAnalysis(!showAnalysis)}
+              className="flex items-center gap-1 text-[11px] font-medium text-cyan hover:underline"
+            >
+              <Lightbulb size={11} />
+              {showAnalysis ? "Hide" : "View"} Analysis
+              {showAnalysis ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+            </button>
+            {showAnalysis && (
+              <div className="mt-2 space-y-2 p-2.5 rounded-lg bg-secondary/60 border border-border">
+                {business.websiteAnalysis && (
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">{business.websiteAnalysis}</p>
+                )}
+                {business.websiteRecommendations && business.websiteRecommendations.length > 0 && (
+                  <ul className="space-y-1">
+                    {business.websiteRecommendations.map((rec, i) => (
+                      <li key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                        <span className="text-cyan font-mono shrink-0">{i + 1}.</span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Meta info */}
