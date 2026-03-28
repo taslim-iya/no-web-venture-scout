@@ -11,8 +11,7 @@ export async function getCachedSearch(
   mode: SearchMode
 ): Promise<{ businesses: Business[]; location?: string } | null> {
   const key = makeSearchKey(city, category, mode);
-  const { data, error } = await supabase
-    .from("search_cache")
+  const { data, error } = await (supabase.from("search_cache") as any)
     .select("results, location_label")
     .eq("search_key", key)
     .maybeSingle();
@@ -52,8 +51,7 @@ export async function saveSearchCache(
 export async function getSearchHistory(): Promise<
   { id: string; city: string; category: string; mode: string; source: string; result_count: number; created_at: string }[]
 > {
-  const { data } = await supabase
-    .from("search_cache")
+  const { data } = await (supabase.from("search_cache") as any)
     .select("id, city, category, mode, source, result_count, created_at")
     .order("created_at", { ascending: false })
     .limit(50);
@@ -61,8 +59,7 @@ export async function getSearchHistory(): Promise<
 }
 
 export async function loadCachedById(id: string): Promise<{ businesses: Business[]; location?: string; city: string; category: string; mode: string } | null> {
-  const { data, error } = await supabase
-    .from("search_cache")
+  const { data, error } = await (supabase.from("search_cache") as any)
     .select("results, location_label, city, category, mode")
     .eq("id", id)
     .maybeSingle();
@@ -78,8 +75,7 @@ export async function loadCachedById(id: string): Promise<{ businesses: Business
 
 /** Get all cached place_ids to exclude from future searches */
 export async function getCachedPlaceIds(): Promise<Set<string>> {
-  const { data } = await supabase
-    .from("search_cache")
+  const { data } = await (supabase.from("search_cache") as any)
     .select("results");
   if (!data) return new Set();
   const ids = new Set<string>();
