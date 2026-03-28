@@ -1,16 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HeroSection } from "@/components/HeroSection";
 import { BusinessCard } from "@/components/BusinessCard";
 import { BusinessTable } from "@/components/BusinessTable";
 import { BusinessLookup } from "@/components/BusinessLookup";
+import { CsvUpload } from "@/components/CsvUpload";
 import { StatsBar } from "@/components/StatsBar";
 import { FilterBar, ViewMode } from "@/components/FilterBar";
 import { EmptyState } from "@/components/EmptyState";
 import { SavedLeadsDrawer } from "@/components/SavedLeadsDrawer";
 import { Business, SearchMode } from "@/data/mockBusinesses";
 import { findBusinessesWithoutWebsites } from "@/lib/placesApi";
+import { getCachedSearch, saveSearchCache, getSearchHistory, loadCachedById, getCachedPlaceIds } from "@/lib/searchCacheApi";
 import { useToast } from "@/components/ui/use-toast";
-import { BookmarkCheck, Search } from "lucide-react";
+import { BookmarkCheck, Search, History, Clock, Upload, FileSpreadsheet, Trash2 } from "lucide-react";
 
 type SortOption = "rating" | "reviews" | "name" | "established";
 
@@ -58,6 +60,16 @@ const exportCSV = (businesses: Business[]) => {
   URL.revokeObjectURL(url);
 };
 
+type HistoryEntry = {
+  id: string;
+  city: string;
+  category: string;
+  mode: string;
+  source: string;
+  result_count: number;
+  created_at: string;
+};
+
 const Index = () => {
   const { toast } = useToast();
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -68,6 +80,17 @@ const Index = () => {
   const [locationLabel, setLocationLabel] = useState<string>("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerRefreshKey, setDrawerRefreshKey] = useState(0);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    refreshHistory();
+  }, []);
+
+  const refreshHistory = async () => {
+    const h = await getSearchHistory();
+    setHistory(h);
+  };
 
   const handleSearch = async (city: string, category: string, mode: SearchMode = "no_website") => {
     if (!city.trim()) {
@@ -79,32 +102,79 @@ const Index = () => {
     setHasSearched(true);
     setBusinesses([]);
 
+    // Check cache first
+    const cached = await getCachedSearch(city, category, mode);
+    if (cached && cached.businesses.length > 0) {
+      setBusinesses(cached.businesses);
+      if (cached.location) setLocationLabel(cached.location);
+      setIsLoading(false);
+      toast({
+        title: `Loaded ${cached.businesses.length} cached leads`,
+        description: `Previously searched — showing saved results`,
+      });
+      return;
+    }
+
     const result = await findBusinessesWithoutWebsites(city, category, mode);
 
     setIsLoading(false);
 
     if (result.error) {
-      toast({
-        title: "Search failed",
-        description: result.error,
-        variant: "destructive",
-      });
+      toast({ title: "Search failed", description: result.error, variant: "destructive" });
       return;
     }
 
-    setBusinesses(result.businesses);
+    // Filter out already-seen place_ids
+    const seenIds = await getCachedPlaceIds();
+    const newBusinesses = result.businesses.filter((b) => !seenIds.has(b.id));
+
+    setBusinesses(newBusinesses);
     if (result.location) setLocationLabel(result.location);
 
-    if (result.businesses.length === 0) {
+    // Save to cache
+    if (newBusinesses.length > 0) {
+      await saveSearchCache(city, category, mode, newBusinesses, result.location);
+      refreshHistory();
+    }
+
+    if (newBusinesses.length === 0 && result.businesses.length > 0) {
+      toast({
+        title: "All duplicates",
+        description: `Found ${result.businesses.length} businesses but all were already in previous searches.`,
+      });
+    } else if (newBusinesses.length === 0) {
       toast({
         title: "No results found",
-        description: `All businesses in "${city}" matching "${category}" appear to have websites, or try a different city/category.`,
+        description: `No businesses found matching your criteria. Try a different city/category.`,
       });
     } else {
+      const skipped = result.businesses.length - newBusinesses.length;
       toast({
-        title: `Found ${result.businesses.length} leads!`,
-        description: `Businesses without websites in ${result.location ?? city}`,
+        title: `Found ${newBusinesses.length} new leads!`,
+        description: skipped > 0
+          ? `${skipped} duplicates from previous searches were excluded`
+          : `Businesses in ${result.location ?? city}`,
       });
+    }
+  };
+
+  const handleCsvImport = async (imported: Business[], fileName: string) => {
+    setBusinesses(imported);
+    setHasSearched(true);
+    setLocationLabel(`CSV: ${fileName}`);
+    // Save to cache with a unique key
+    await saveSearchCache(`csv:${fileName}`, "All Categories", "no_website", imported, `CSV: ${fileName}`, "csv_upload");
+    refreshHistory();
+  };
+
+  const handleLoadHistory = async (entry: HistoryEntry) => {
+    const data = await loadCachedById(entry.id);
+    if (data) {
+      setBusinesses(data.businesses);
+      setLocationLabel(data.location ?? `${data.city} · ${data.category}`);
+      setHasSearched(true);
+      setShowHistory(false);
+      toast({ title: `Loaded ${data.businesses.length} leads`, description: `From ${entry.source === "csv_upload" ? "CSV upload" : "search"} on ${new Date(entry.created_at).toLocaleDateString()}` });
     }
   };
 
@@ -130,7 +200,15 @@ const Index = () => {
             <span className="text-muted-foreground font-light">.finder</span>
           </span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <CsvUpload onImport={handleCsvImport} />
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-cyan transition-colors border border-border hover:border-cyan/30 rounded-lg px-3 py-1.5"
+          >
+            <History size={13} />
+            History {history.length > 0 && `(${history.length})`}
+          </button>
           <button
             onClick={() => { setDrawerOpen(true); setDrawerRefreshKey((k) => k + 1); }}
             className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-cyan transition-colors border border-border hover:border-cyan/30 rounded-lg px-3 py-1.5"
@@ -144,6 +222,51 @@ const Index = () => {
           </div>
         </div>
       </nav>
+
+      {/* Search History Panel */}
+      {showHistory && (
+        <div className="max-w-6xl mx-auto px-4 pt-4">
+          <div className="bg-gradient-card border border-border rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Clock size={14} className="text-cyan" />
+                Search & Upload History
+              </h3>
+              <button onClick={() => setShowHistory(false)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
+            </div>
+            {history.length === 0 ? (
+              <p className="text-xs text-muted-foreground font-mono py-2">No previous searches yet.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                {history.map((entry) => (
+                  <button
+                    key={entry.id}
+                    onClick={() => handleLoadHistory(entry)}
+                    className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg hover:bg-secondary/60 transition-colors text-left group"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {entry.source === "csv_upload" ? (
+                        <FileSpreadsheet size={13} className="text-cyan shrink-0" />
+                      ) : (
+                        <Search size={13} className="text-muted-foreground shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">
+                          {entry.city}{entry.category !== "All Categories" && entry.category ? ` · ${entry.category}` : ""}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground font-mono">
+                          {entry.result_count} leads · {entry.mode} · {new Date(entry.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-cyan opacity-0 group-hover:opacity-100 transition-opacity shrink-0">Load →</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Main content */}
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
