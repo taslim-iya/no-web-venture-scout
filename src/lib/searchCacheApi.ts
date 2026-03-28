@@ -34,7 +34,7 @@ export async function saveSearchCache(
 ) {
   const key = makeSearchKey(city, category, mode);
   // Use upsert so re-running same search updates the cache
-  await supabase.from("search_cache").upsert(
+  await (supabase.from("search_cache") as any).upsert(
     {
       search_key: key,
       city: city.trim(),
