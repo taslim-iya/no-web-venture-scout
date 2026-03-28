@@ -335,6 +335,8 @@ Deno.serve(async (req) => {
             if (check.score !== null && check.score < 50) issueLabels.push(`Perf: ${check.score}/100`);
           }
 
+          const { analysis, recommendations } = generateAnalysis(check, matchedCategory);
+
           businesses.push({
             id: place.place_id,
             name: place.name,
@@ -350,6 +352,8 @@ Deno.serve(async (req) => {
             websiteScore: check.score,
             websiteQuality: 'poor' as WebsiteQuality,
             websiteIssues: issueLabels,
+            websiteAnalysis: analysis,
+            websiteRecommendations: recommendations,
             email: null,
           });
         }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, MapPin, Star, Copy, Check, Globe, Calendar, Users, Mail, Loader2, Bookmark, BookmarkCheck, AlertTriangle, ExternalLink, WifiOff } from "lucide-react";
+import { Phone, MapPin, Star, Copy, Check, Globe, Calendar, Users, Mail, Loader2, Bookmark, BookmarkCheck, AlertTriangle, ExternalLink, WifiOff, Lightbulb, ChevronDown, ChevronUp } from "lucide-react";
 import { Business } from "@/data/mockBusinesses";
 import { findEmailForBusiness } from "@/lib/hunterApi";
 import { saveLead } from "@/lib/savedLeadsApi";
