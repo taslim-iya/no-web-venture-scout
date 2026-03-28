@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.find-email]
 verify_jwt = false
+
+[functions.lookup-business]
+verify_jwt = false
