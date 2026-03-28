@@ -68,6 +68,45 @@ export type Database = {
         }
         Relationships: []
       }
+      search_cache: {
+        Row: {
+          category: string
+          city: string
+          created_at: string
+          id: string
+          location_label: string | null
+          mode: string
+          result_count: number
+          results: Json
+          search_key: string
+          source: string
+        }
+        Insert: {
+          category?: string
+          city?: string
+          created_at?: string
+          id?: string
+          location_label?: string | null
+          mode?: string
+          result_count?: number
+          results?: Json
+          search_key: string
+          source?: string
+        }
+        Update: {
+          category?: string
+          city?: string
+          created_at?: string
+          id?: string
+          location_label?: string | null
+          mode?: string
+          result_count?: number
+          results?: Json
+          search_key?: string
+          source?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
