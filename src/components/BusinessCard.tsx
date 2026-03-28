@@ -21,14 +21,6 @@ export const BusinessCard = ({ business, index, onLeadSaved }: BusinessCardProps
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
-  const { toast } = useToast();
-  const [copied, setCopied] = useState<string | null>(null);
-  const [email, setEmail] = useState<string | null>(business.email ?? null);
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [emailSearched, setEmailSearched] = useState(!!business.email);
-  const [emailConfidence, setEmailConfidence] = useState<number | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
