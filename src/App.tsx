@@ -3,10 +3,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
-import { LayoutDashboard, Search, Users, Settings } from "lucide-react";
+import { LayoutDashboard, Search, Users, Upload, Globe } from "lucide-react";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Outreach from "./pages/Outreach";
+import BatchUpload from "./pages/BatchUpload";
+import MockBuilder from "./pages/MockBuilder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +32,12 @@ function TopNav() {
         <NavLink to="/outreach" className={linkClass}>
           <Users className="w-4 h-4" /> Outreach
         </NavLink>
+        <NavLink to="/upload" className={linkClass}>
+          <Upload className="w-4 h-4" /> Batch Upload
+        </NavLink>
+        <NavLink to="/mockup" className={linkClass}>
+          <Globe className="w-4 h-4" /> Mock Website
+        </NavLink>
       </div>
     </nav>
   );
@@ -46,6 +54,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/outreach" element={<Outreach />} />
+          <Route path="/upload" element={<BatchUpload />} />
+          <Route path="/mockup" element={<MockBuilder />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
