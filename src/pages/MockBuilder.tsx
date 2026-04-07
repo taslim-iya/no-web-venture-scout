@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Sparkles, Download, Copy, Users, Wand2, Loader2, Eye, RefreshCw, Palette } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { getSavedLeads, SavedLead } from "@/lib/savedLeadsApi";
+import { buildWebsitePrompt } from "@/lib/websitePrompt";
 
 interface MockConfig {
   businessName: string;
@@ -49,30 +50,6 @@ const CATEGORIES = [
   "Gym", "Spa", "Photographer", "Landscaping", "Roofing", "HVAC",
   "Real Estate Agent", "Cleaning Service", "Tattoo Studio", "Barber",
 ];
-
-function buildPrompt(config: MockConfig): string {
-  const { businessName, category, phone, email, address, style, accentColor } = config;
-  const location = address ? address.split(",").pop()?.trim() || "the local area" : "the local area";
-
-  return `Generate a complete, production-quality single-page HTML website for a ${category.toLowerCase()} business called "${businessName}" located in ${location}.
-
-REQUIREMENTS:
-- Single HTML file with ALL CSS embedded in <style> tags (no external resources)
-- Use Google Fonts via @import (Inter + one display font appropriate for the style)
-- Accent color: ${accentColor}
-- Style: ${style} — ${style === "modern" ? "clean lines, subtle shadows, SaaS-inspired" : style === "elegant" ? "serif fonts, muted tones, luxury feel, generous spacing" : style === "bold" ? "large type, high contrast, dark sections, strong CTAs" : style === "minimal" ? "lots of white space, thin borders, understated" : style === "agency" ? "creative layout, asymmetric, dynamic gradients" : "rounded corners, warm palette, friendly illustrations placeholders"}
-- MUST include: Navigation bar, Hero section with tagline + CTA buttons, Services section (6 services relevant to ${category}), Testimonials section (3 fake but realistic reviews), About section, Contact section with the details provided, Footer
-- Phone: ${phone || "020 1234 5678"}, Email: ${email || `hello@${businessName.toLowerCase().replace(/[^a-z0-9]/g, "")}.co.uk`}, Address: ${address || "123 High Street, London"}
-- Make it look like a REAL professional website, not a template
-- Use realistic, well-written copy — NOT placeholder lorem ipsum
-- Use CSS grid/flexbox for layout
-- Make it fully responsive
-- Use SVG icons inline (simple geometric shapes) for services instead of emoji
-- Add subtle CSS animations (fade-in on scroll using IntersectionObserver in a <script> tag)
-- The hero should have a gradient or textured background, not just flat color
-- Total output should be between 400-600 lines
-- Return ONLY the HTML. No explanation, no markdown fences, just pure HTML starting with <!DOCTYPE html>`;
-}
 
 export default function MockBuilder() {
   const { toast } = useToast();
@@ -144,7 +121,8 @@ export default function MockBuilder() {
           provider: "openai",
           apiKey: aiKey,
           model: "gpt-4o",
-          messages: [{ role: "user", content: buildPrompt(config) }],
+          maxTokens: 16000,
+          messages: [{ role: "user", content: buildWebsitePrompt(config) }],
         }),
       });
 

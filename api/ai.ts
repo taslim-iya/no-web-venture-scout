@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  const { provider, apiKey, messages, model, systemPrompt } = req.body || {};
+  const { provider, apiKey, messages, model, systemPrompt, maxTokens } = req.body || {};
   if (!provider || !apiKey || !messages) {
     return res.status(400).json({ error: 'Missing provider, apiKey, or messages' });
   }
@@ -20,6 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ...messages,
           ],
           temperature: 0.7,
+          max_tokens: maxTokens || 16000,
         }),
       });
       const data = await response.json();
